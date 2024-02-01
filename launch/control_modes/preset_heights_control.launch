@@ -1,0 +1,73 @@
+<?xml version="1.0"?>
+<launch>
+    <!-- ============================ SETTINGS ============================= -->
+
+    <!-- Node frequency: the frequency [Hz] which rate.sleep() function will
+    attempt to maintain in the main_loop. -->
+    <arg 
+    name="node_frequency" 
+    default="100"/>
+
+    <!-- Controller side: can be either "right" or "left". -->
+    <arg 
+    name="controller_side" 
+    default="right"/>
+
+    <!-- Preset heights number: the number of evenly distributed points along
+    the chest motion range (0.0 - 0.44 m). The minimum number is 3: This will
+    produce [0, 0.22, 0.44] preset heights. -->
+    <arg name="preset_heights_number" 
+    default="3"/>
+
+    <!-- Chest speed fraction: maximum chest motion speed (0.01 - 1.0), which
+    represents the fraction of the maximum chest speed. -->
+    <arg 
+    name="chest_speed_fraction" 
+    default="1.0"/>
+
+    <!-- If any of dependency or optional subfiles should not be launched (or
+    are launched separately) set corresponding argument to "false". -->
+    <arg 
+    name="launch_chest" 
+    default="true"/>
+    <arg 
+    name="launch_controller_feedback" 
+    default="true"/>
+
+    <!-- ======================== END OF SETTINGS ========================== -->
+
+    <!-- Chest modules (dependency): -->
+    <group if="$(arg launch_chest)">
+        <include file="$(find gopher_ros_clearcore)/launch/chest.launch"/>
+    </group>
+
+    <!-- Oculus controller feedback (dependency): -->
+    <group if="$(arg launch_controller_feedback)">
+        <include 
+        file="$(find oculus_ros)/launch/controller_feedback.launch">
+            <arg 
+            name="controller_side" 
+            value="$(arg controller_side)"/>
+        </include>
+    </group>
+
+    <!-- Preset heights control module: -->
+    <node 
+    pkg="gopher_ros_clearcore" 
+    type="preset_heights_control.py" 
+    name="preset_heights_control" 
+    output="screen">
+        <param 
+        name="node_frequency" 
+        value="$(arg node_frequency)"/>
+        <param 
+        name="controller_side" 
+        value="$(arg controller_side)"/>
+        <param 
+        name="preset_heights_number" 
+        value="$(arg preset_heights_number)"/>
+        <param 
+        name="chest_speed_fraction" 
+        value="$(arg chest_speed_fraction)"/>
+    </node>
+</launch>
