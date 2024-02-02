@@ -25,6 +25,13 @@
     name="chest_speed_fraction" 
     default="1.0"/>
 
+    <!-- Enable chest compensation for Kinova: Kinova EE stabilization based on
+    the chest position. -->
+    <arg 
+    name="enable_chest_compensation_for_kinova" 
+    default="false"/> 
+
+
     <!-- If any of dependency or optional subfiles should not be launched (or
     are launched separately) set corresponding argument to "false". -->
     <arg 
@@ -51,7 +58,7 @@
         </include>
     </group>
 
-    <!-- Preset heights control module: -->
+    <!-- Preset heights control module: -->s
     <node 
     pkg="gopher_ros_clearcore" 
     type="preset_heights_control.py" 
@@ -69,5 +76,8 @@
         <param 
         name="chest_speed_fraction" 
         value="$(arg chest_speed_fraction)"/>
+        <param 
+        name="enable_chest_compensation_for_kinova" 
+        value="$(arg enable_chest_compensation_for_kinova)"/>
     </node>
 </launch>
