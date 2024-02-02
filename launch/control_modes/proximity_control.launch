@@ -1,0 +1,53 @@
+<?xml version="1.0"?>
+<launch>
+    <!-- ============================ SETTINGS ============================= -->
+
+    <!-- Node frequency: the frequency [Hz] which rate.sleep() function will
+    attempt to maintain in the main_loop. -->
+    <arg 
+    name="node_frequency" 
+    default="100"/>
+
+    <!-- Controller side: can be either "right" or "left". -->
+    <arg 
+    name="controller_side" 
+    default="right"/>
+
+
+    <!-- If any of dependency or optional subfiles should not be launched (or
+    are launched separately) set corresponding argument to "false". -->
+    <arg 
+    name="launch_chest" 
+    default="true"/>
+    <arg 
+    name="launch_chest_pid" 
+    default="true"/>
+
+    <!-- ======================== END OF SETTINGS ========================== -->
+
+    <!-- Chest modules (dependency): -->
+    <group if="$(arg launch_chest)">
+        <include 
+        file="$(find gopher_ros_clearcore)/launch/chest.launch"/>
+    </group>
+
+    <!-- Chest PID control module (dependency): -->
+    <group if="$(arg launch_chest_pid)">
+        <include 
+        file="$(find gopher_ros_clearcore)/launch/chest_pid.launch"/>
+    </group>
+
+    <!-- Proximity control module: -->
+    <node 
+    pkg="gopher_ros_clearcore" 
+    type="proximity_control.py" 
+    name="proximity_control" 
+    output="screen">
+        <param 
+        name="node_frequency" 
+        value="$(arg node_frequency)"/>
+        <param 
+        name="controller_side" 
+        value="$(arg controller_side)"/>
+    </node>
+</launch>
