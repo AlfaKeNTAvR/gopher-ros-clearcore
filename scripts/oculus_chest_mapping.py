@@ -20,6 +20,7 @@ from std_msgs.msg import (
 )
 from std_srvs.srv import (
     Empty,
+    SetBool,
 )
 
 # # Third party messages and services:
@@ -35,6 +36,7 @@ class OculusChestMapping:
         self,
         node_name,
         controller_side,
+        chest_compensation_for_kinova,
     ):
         """
         
@@ -44,6 +46,7 @@ class OculusChestMapping:
         # NOTE: By default all new class CONSTANTS should be private.
         self.__NODE_NAME = node_name
         self.__CONTROLLER_SIDE = controller_side
+        self.__CHEST_COMPENSATION_FOR_KINOVA = chest_compensation_for_kinova
 
         # # Public CONSTANTS:
 
@@ -81,6 +84,15 @@ class OculusChestMapping:
             )
         )
 
+        self.__dependency_status['teleoperation'] = False
+        self.__dependency_status_topics['teleoperation'] = (
+            rospy.Subscriber(
+                '/my_gen3/teleoperation/is_initialized',
+                Bool,
+                self.__teleoperation_callback,
+            )
+        )
+
         # # Service provider:
 
         # # Service subscriber:
@@ -91,6 +103,15 @@ class OculusChestMapping:
         self.__chest_stop = rospy.ServiceProxy(
             '/chest_control/stop',
             Empty,
+        )
+
+        self.__positional_control_chest_compensation = rospy.ServiceProxy(
+            '/my_gen3/positional_control/enable_z_chest_compensation',
+            SetBool,
+        )
+        self.__teleoperation_chest_compensation = rospy.ServiceProxy(
+            f'/my_gen3/teleoperation/enable_z_chest_compensation',
+            SetBool,
         )
 
         # # Topic publisher:
@@ -122,6 +143,13 @@ class OculusChestMapping:
         """
 
         self.__dependency_status['chest_control'] = message.data
+
+    def __teleoperation_callback(self, message):
+        """Monitors /my_gen3/teleoperation/is_initialized topic.
+        
+        """
+
+        self.__dependency_status['teleoperation'] = message.data
 
     # # Service handlers:
     # def __service_name1_handler(self, request):
@@ -170,6 +198,12 @@ class OculusChestMapping:
         self.__dependency_initialized = True
 
         for key in self.__dependency_status:
+            if (
+                key == 'teleoperation'
+                and not self.__CHEST_COMPENSATION_FOR_KINOVA
+            ):
+                continue
+
             if self.__dependency_status_topics[key].get_num_connections() != 1:
                 if self.__dependency_status[key]:
                     rospy.logerr(
@@ -205,6 +239,10 @@ class OculusChestMapping:
         if (self.__dependency_initialized):
             if not self.__is_initialized:
                 rospy.loginfo(f'\033[92m{self.__NODE_NAME}: ready.\033[0m',)
+
+                if self.__CHEST_COMPENSATION_FOR_KINOVA:
+                    self.__teleoperation_chest_compensation(True)
+                    self.__positional_control_chest_compensation(True)
 
                 self.__is_initialized = True
 
@@ -318,9 +356,15 @@ def main():
         default='right',
     )
 
+    chest_compensation_for_kinova = rospy.get_param(
+        param_name=f'{node_name}/enable_chest_compensation_for_kinova',
+        default=False,
+    )
+
     class_instance = OculusChestMapping(
         node_name=node_name,
         controller_side=controller_side,
+        chest_compensation_for_kinova=chest_compensation_for_kinova,
     )
 
     rospy.on_shutdown(class_instance.node_shutdown)

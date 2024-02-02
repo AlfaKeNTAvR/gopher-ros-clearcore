@@ -14,6 +14,13 @@
     name="controller_side" 
     default="right"/>
 
+    <!-- Enable chest compensation for Kinova: Kinova EE stabilization based on
+    the chest position. -->
+    <arg 
+    name="enable_chest_compensation_for_kinova" 
+    default="false"/> 
+
+
     <!-- If any of dependency or optional subfiles should not be launched (or
     are launched separately) set corresponding argument to "false". -->
     <arg 
@@ -28,30 +35,33 @@
     <!-- Chest modules (dependency): -->
     <group if="$(arg launch_chest)">
         <include 
-            file="$(find gopher_ros_clearcore)/launch/chest.launch"/>
+        file="$(find gopher_ros_clearcore)/launch/chest.launch"/>
     </group>
 
     <!-- Oculus controller feedback (dependency): -->
     <group if="$(arg launch_controller_feedback)">
         <include 
-            file="$(find oculus_ros)/launch/controller_feedback.launch">
-                <arg 
-                name="controller_side" 
-                value="$(arg controller_side)"/>
+        file="$(find oculus_ros)/launch/controller_feedback.launch">
+            <arg 
+            name="controller_side" 
+            value="$(arg controller_side)"/>
         </include>
     </group>
 
     <!-- Oculus mapping: -->
     <node 
-        pkg="gopher_ros_clearcore" 
-        type="oculus_chest_mapping.py" 
-        name="oculus_chest_mapping" 
-        output="screen">
+    pkg="gopher_ros_clearcore" 
+    type="oculus_chest_mapping.py" 
+    name="oculus_chest_mapping" 
+    output="screen">
         <param 
-            name="node_frequency" 
-            value="$(arg node_frequency)"/>
+        name="node_frequency" 
+        value="$(arg node_frequency)"/>
         <param 
-            name="controller_side" 
-            value="$(arg controller_side)"/>
+        name="controller_side" 
+        value="$(arg controller_side)"/>
+        <param 
+        name="enable_chest_compensation_for_kinova" 
+        value="$(arg enable_chest_compensation_for_kinova)"/>
     </node>
 </launch>
