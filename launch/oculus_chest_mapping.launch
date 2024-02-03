@@ -14,6 +14,12 @@
     name="controller_side" 
     default="right"/>
 
+    <!-- Max speed fraction: maximum chest motion speed (0.01 - 1.0), which
+    represents the fraction of the maximum chest speed. -->
+    <arg 
+    name="max_speed_fraction" 
+    default="1.0"/>
+
     <!-- Enable chest compensation for Kinova: Kinova EE stabilization based on
     the chest position. -->
     <arg 
@@ -60,6 +66,9 @@
         <param 
         name="controller_side" 
         value="$(arg controller_side)"/>
+        <param 
+        name="max_speed_fraction" 
+        value="$(arg max_speed_fraction)"/>
         <param 
         name="enable_chest_compensation_for_kinova" 
         value="$(arg enable_chest_compensation_for_kinova)"/>

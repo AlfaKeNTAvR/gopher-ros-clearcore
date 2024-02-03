@@ -36,6 +36,7 @@ class OculusChestMapping:
         self,
         node_name,
         controller_side,
+        max_speed_fraction,
         chest_compensation_for_kinova,
     ):
         """
@@ -46,6 +47,7 @@ class OculusChestMapping:
         # NOTE: By default all new class CONSTANTS should be private.
         self.__NODE_NAME = node_name
         self.__CONTROLLER_SIDE = controller_side
+        self.__MAX_SPEED_FRACTION = max_speed_fraction
         self.__CHEST_COMPENSATION_FOR_KINOVA = chest_compensation_for_kinova
 
         # # Public CONSTANTS:
@@ -262,17 +264,23 @@ class OculusChestMapping:
         
         """
 
-        chest_velolicity = 0.0
+        chest_velocity = 0.0
 
         if abs(self.__oculus_joystick.position_y) > 0.05:  # Noisy joystick.
-            chest_velolicity = np.interp(
+            chest_velocity = np.interp(
                 round(self.__oculus_joystick.position_y, 4),
                 [-1.0, 1.0],
-                [-0.8, 0.8],
+                [-1.0, 1.0],
             )
 
+        chest_velocity = np.clip(
+            chest_velocity,
+            -self.__MAX_SPEED_FRACTION,
+            self.__MAX_SPEED_FRACTION,
+        )
+
         velocity_message = Float32()
-        velocity_message.data = chest_velolicity
+        velocity_message.data = chest_velocity
         self.__chest_velocity.publish(velocity_message)
 
     def __joystick_button_state_machine(self):
@@ -355,7 +363,10 @@ def main():
         param_name=f'{node_name}/controller_side',
         default='right',
     )
-
+    max_speed_fraction = rospy.get_param(
+        param_name=f'{rospy.get_name()}/max_speed_fraction',
+        default=1.0,
+    )
     chest_compensation_for_kinova = rospy.get_param(
         param_name=f'{node_name}/enable_chest_compensation_for_kinova',
         default=False,
@@ -364,6 +375,7 @@ def main():
     class_instance = OculusChestMapping(
         node_name=node_name,
         controller_side=controller_side,
+        max_speed_fraction=max_speed_fraction,
         chest_compensation_for_kinova=chest_compensation_for_kinova,
     )
 
