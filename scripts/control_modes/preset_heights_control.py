@@ -38,8 +38,8 @@ class PresetHeightsControl:
         self,
         node_name,
         controller_side,
+        max_speed_fraction,
         preset_heights_number,
-        chest_speed_fraction,
         chest_compensation_for_kinova,
     ):
         """
@@ -50,7 +50,7 @@ class PresetHeightsControl:
         # NOTE: By default all new class CONSTANTS should be private.
         self.__NODE_NAME = node_name
         self.__CONTROLLER_SIDE = controller_side
-        self.__CHEST_COMPENSATION_FOR_KINOVA = chest_compensation_for_kinova
+        self.__MAX_SPEED_FRACTION = max_speed_fraction
 
         if preset_heights_number < 3:
             raise ValueError('preset_heights_number should be >= 3.')
@@ -59,7 +59,7 @@ class PresetHeightsControl:
         self.__PRESET_HEIGHTS = [
             interval_length * i for i in range(preset_heights_number)
         ]
-        self.__CHEST_SPEED_FRACTION = chest_speed_fraction
+        self.__CHEST_COMPENSATION_FOR_KINOVA = chest_compensation_for_kinova
 
         # # Public CONSTANTS:
 
@@ -295,7 +295,7 @@ class PresetHeightsControl:
         # Chest_control service call.
         self.__chest_absolute_position(
             self.__PRESET_HEIGHTS[self.__preset_height_idx],
-            self.__CHEST_SPEED_FRACTION,
+            self.__MAX_SPEED_FRACTION,
         )
 
     def __joystick_state_machine(self):
@@ -400,13 +400,13 @@ def main():
         param_name=f'{node_name}/controller_side',
         default='right',
     )
+    max_speed_fraction = rospy.get_param(
+        param_name=f'{node_name}/max_speed_fraction',
+        default=1.0,
+    )
     preset_heights_number = rospy.get_param(
         param_name=f'{node_name}/preset_heights_number',
         default=3,
-    )
-    chest_speed_fraction = rospy.get_param(
-        param_name=f'{node_name}/chest_speed_fraction',
-        default=1.0,
     )
     chest_compensation_for_kinova = rospy.get_param(
         param_name=f'{node_name}/enable_chest_compensation_for_kinova',
@@ -416,8 +416,8 @@ def main():
     class_instance = PresetHeightsControl(
         node_name=node_name,
         controller_side=controller_side,
+        max_speed_fraction=max_speed_fraction,
         preset_heights_number=preset_heights_number,
-        chest_speed_fraction=chest_speed_fraction,
         chest_compensation_for_kinova=chest_compensation_for_kinova,
     )
 

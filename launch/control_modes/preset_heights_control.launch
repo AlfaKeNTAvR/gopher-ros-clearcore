@@ -13,17 +13,17 @@
     name="controller_side" 
     default="right"/>
 
+    <!-- Max speed fraction: maximum chest motion speed (0.01 - 1.0), which
+    represents the fraction of the maximum chest speed. -->
+    <arg 
+    name="max_speed_fraction" 
+    default="1.0"/>
+
     <!-- Preset heights number: the number of evenly distributed points along
     the chest motion range (0.0 - 0.44 m). The minimum number is 3: This will
     produce [0, 0.22, 0.44] preset heights. -->
     <arg name="preset_heights_number" 
-    default="3"/>
-
-    <!-- Chest speed fraction: maximum chest motion speed (0.01 - 1.0), which
-    represents the fraction of the maximum chest speed. -->
-    <arg 
-    name="chest_speed_fraction" 
-    default="1.0"/>
+    default="3"/>   
 
     <!-- Enable chest compensation for Kinova: Kinova EE stabilization based on
     the chest position. -->
@@ -71,11 +71,11 @@
         name="controller_side" 
         value="$(arg controller_side)"/>
         <param 
+        name="max_speed_fraction" 
+        value="$(arg max_speed_fraction)"/>
+        <param 
         name="preset_heights_number" 
         value="$(arg preset_heights_number)"/>
-        <param 
-        name="chest_speed_fraction" 
-        value="$(arg chest_speed_fraction)"/>
         <param 
         name="enable_chest_compensation_for_kinova" 
         value="$(arg enable_chest_compensation_for_kinova)"/>
