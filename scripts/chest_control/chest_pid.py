@@ -172,7 +172,7 @@ class ChestPID:
 
         self.__current_position = message.data
 
-        if self.__goal_position == None:
+        if self.__goal_position == None and self.__is_initialized:
             self.__goal_position = message.data
 
     def __goal_position_callback(self, message):
@@ -313,7 +313,7 @@ class ChestPID:
         # NOTE: Add code (function calls), which has to be executed once the
         # node was successfully initialized.
 
-        if self.__pid_enabled:
+        if self.__pid_enabled and self.__goal_position != None:
             self.__update_pid()
 
     def node_shutdown(self):

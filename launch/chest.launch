@@ -9,39 +9,49 @@
     name="node_frequency" 
     default="100"/>
 
+    <!-- Start position: move chest to starting position [meters]: [0.0 - 0.44].
+    If set to -1, no starting position is set and the chest stays at current
+    position. -->
+    <arg 
+    name="start_position" 
+    default="-1"/>
+
     <!-- ======================== END OF SETTINGS ========================== -->
 
 
     <!-- Chest serial module: -->
     <node 
-        pkg="gopher_ros_clearcore" 
-        type="chest_serial.py" 
-        name="chest_serial" 
-        output="screen">
+    pkg="gopher_ros_clearcore" 
+    type="chest_serial.py" 
+    name="chest_serial" 
+    output="screen">
         <param 
-            name="node_frequency" 
-            value="$(arg node_frequency)"/>
+        name="node_frequency" 
+        value="$(arg node_frequency)"/>
     </node>
 
     <!-- Chest logger module: --> 
     <node 
-        pkg="gopher_ros_clearcore" 
-        type="chest_logger.py" 
-        name="chest_logger" 
-        output="screen">
+    pkg="gopher_ros_clearcore" 
+    type="chest_logger.py" 
+    name="chest_logger" 
+    output="screen">
         <param 
-            name="node_frequency" 
-            value="$(arg node_frequency)"/>
+        name="node_frequency" 
+        value="$(arg node_frequency)"/>
     </node>
     
     <!-- Chest control module: --> 
     <node 
-        pkg="gopher_ros_clearcore" 
-        type="chest_control.py" 
-        name="chest_control" 
-        output="screen">
+    pkg="gopher_ros_clearcore" 
+    type="chest_control.py" 
+    name="chest_control" 
+    output="screen">
         <param 
-            name="node_frequency" 
-            value="$(arg node_frequency)"/>
+        name="node_frequency" 
+        value="$(arg node_frequency)"/>
+        <param 
+        name="start_position" 
+        value="$(arg start_position)"/>
     </node>   
 </launch>

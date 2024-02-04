@@ -43,6 +43,7 @@ class ChestControl:
     def __init__(
         self,
         node_name,
+        start_position,
     ):
         """
         
@@ -51,6 +52,7 @@ class ChestControl:
         # # Private CONSTANTS:
         # NOTE: By default all new class CONSTANTS should be private.
         self.__NODE_NAME = node_name
+        self.__START_POSITION = start_position
 
         # # Public CONSTANTS:
 
@@ -66,6 +68,10 @@ class ChestControl:
             'position': time.perf_counter(),
         }
         self.__chest_is_homed = False
+
+        self.__current_chest_position = None
+        self.__chest_at_start_position = False
+        self.__start_position_state = 0
 
         # # Public variables:
 
@@ -171,6 +177,11 @@ class ChestControl:
             '/chest_logger/is_homed',
             Bool,
             self.__is_homed_callback,
+        )
+        rospy.Subscriber(
+            '/chest_logger/current_position',
+            Float32,
+            self.__chest_current_position_callback,
         )
 
         # # Timers:
@@ -427,6 +438,13 @@ class ChestControl:
 
         self.__chest_is_homed = message.data
 
+    def __chest_current_position_callback(self, message):
+        """
+        
+        """
+
+        self.__current_chest_position = message.data
+
     # # Timer callbacks:
 
     # # Private methods:
@@ -482,7 +500,10 @@ class ChestControl:
             )
 
         # NOTE (optionally): Add more initialization criterea if needed.
-        if (self.__dependency_initialized and self.__chest_is_homed):
+        if (
+            self.__dependency_initialized and self.__chest_is_homed
+            and self.__chest_at_start_position
+        ):
             if not self.__is_initialized:
                 rospy.loginfo(
                     (f'{self.__NODE_NAME}: '
@@ -510,6 +531,40 @@ class ChestControl:
 
         self.__node_is_initialized.publish(self.__is_initialized)
 
+    def __start_position_state_machine(self):
+        """
+        
+        """
+
+        # State 0: Send to start position.
+        if (
+            self.__start_position_state == 0
+            and not self.__chest_at_start_position
+        ):
+            # No start position provided.
+            if self.__START_POSITION == -1:
+                self.__chest_at_start_position = True
+
+            else:
+                # Send to start position.
+                serial_command = f'am_{self.__START_POSITION * 1000}_{0.5}_'
+                self.__serial_write(serial_command)
+                rospy.logwarn(
+                    f'{self.__NODE_NAME}: moving to the start position...',
+                )
+
+                self.__start_position_state = 1
+
+        # State 1: Wait for the motion to finish.
+        elif (
+            self.__start_position_state == 1 and
+            abs(self.__current_chest_position - self.__START_POSITION) <= 0.005
+        ):
+            self.__chest_at_start_position = True
+            self.__start_position_state = 0
+
+            rospy.loginfo(f'{self.__NODE_NAME}: at the start position.',)
+
     # # Public methods:
     # NOTE: By default all new class methods should be private.
     def main_loop(self):
@@ -518,6 +573,9 @@ class ChestControl:
         """
 
         self.__check_initialization()
+
+        if self.__chest_is_homed and not self.__chest_at_start_position:
+            self.__start_position_state_machine()
 
         if not self.__is_initialized:
             return
@@ -563,8 +621,15 @@ def main():
         param_name=f'{rospy.get_name()}/node_frequency',
         default=100,
     )
+    start_position = rospy.get_param(
+        param_name=f'{rospy.get_name()}/start_position',
+        default=-1,
+    )
 
-    class_instance = ChestControl(node_name=node_name,)
+    class_instance = ChestControl(
+        node_name=node_name,
+        start_position=start_position,
+    )
 
     rospy.on_shutdown(class_instance.node_shutdown)
     node_rate = rospy.Rate(node_frequency)
