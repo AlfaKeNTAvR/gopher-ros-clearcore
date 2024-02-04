@@ -20,6 +20,13 @@
     name="max_speed_fraction" 
     default="1.0"/>
 
+    <!-- Start position (chest): move chest to starting position
+    [meters]: [0.0 - 0.44]. If set to -1, no starting position is set and the
+    chest stays at current position. -->
+    <arg 
+    name="start_position" 
+    value="0.22"/>
+
     <!-- Enable chest compensation for Kinova: Kinova EE stabilization based on
     the chest position. -->
     <arg 
@@ -41,7 +48,11 @@
     <!-- Chest modules (dependency): -->
     <group if="$(arg launch_chest)">
         <include 
-        file="$(find gopher_ros_clearcore)/launch/chest.launch"/>
+        file="$(find gopher_ros_clearcore)/launch/chest.launch">
+            <arg 
+            name="start_position" 
+            value="$(arg start_position)"/>
+        </include>
     </group>
 
     <!-- Oculus controller feedback (dependency): -->

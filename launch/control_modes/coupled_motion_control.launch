@@ -7,11 +7,13 @@
     <arg 
     name="node_frequency" 
     default="100"/>
-
-    <!-- Controller side: can be either "right" or "left". -->
+    
+    <!-- Start position (chest): move chest to starting position
+    [meters]: [0.0 - 0.44]. If set to -1, no starting position is set and the
+    chest stays at current position. -->
     <arg 
-    name="controller_side" 
-    default="right"/>
+    name="start_position" 
+    value="0.22"/>
 
 
     <!-- If any of dependency or optional subfiles should not be launched (or
@@ -28,7 +30,11 @@
     <!-- Chest modules (dependency): -->
     <group if="$(arg launch_chest)">
         <include 
-        file="$(find gopher_ros_clearcore)/launch/chest.launch"/>
+        file="$(find gopher_ros_clearcore)/launch/chest.launch">
+            <arg 
+            name="start_position" 
+            value="$(arg start_position)"/>
+        </include>
     </group>
 
     <!-- Chest PID control module (dependency): -->
@@ -46,8 +52,5 @@
         <param 
         name="node_frequency" 
         value="$(arg node_frequency)"/>
-        <param 
-        name="controller_side" 
-        value="$(arg controller_side)"/>
     </node>
 </launch>
