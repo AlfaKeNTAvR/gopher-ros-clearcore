@@ -36,6 +36,8 @@ class ProximityControl:
         self,
         node_name,
         robot_name,
+        arm_center_of_workspace_z,
+        activation_boundary_z,
     ):
         """
         
@@ -46,11 +48,10 @@ class ProximityControl:
         self.__NODE_NAME = node_name
         self.__ROBOT_NAME = robot_name
 
-        self.__Z_ARM_CENTER_OF_WORKSPACE = 0.25
-        self.__Z_CHEST_CENTER_OF_WORKSPACE = 0.2
-        self.__Z_ACTIVATION_BOUNDARIES = {
-            'min': self.__Z_ARM_CENTER_OF_WORKSPACE - 0.3,
-            'max': self.__Z_ARM_CENTER_OF_WORKSPACE + 0.3,
+        self.__ARM_CENTER_OF_WORKSPACE_Z = arm_center_of_workspace_z
+        self.__ACTIVATION_BOUNDARY_Z = {
+            'min': self.__ARM_CENTER_OF_WORKSPACE_Z - activation_boundary_z,
+            'max': self.__ARM_CENTER_OF_WORKSPACE_Z + activation_boundary_z,
         }
 
         # # Public CONSTANTS:
@@ -59,8 +60,8 @@ class ProximityControl:
         # # Private variables:
         # NOTE: By default all new class variables should be private.
         self.__z_height = {
-            'gcs': self.__Z_ARM_CENTER_OF_WORKSPACE,
-            'chest': self.__Z_CHEST_CENTER_OF_WORKSPACE,
+            'gcs': self.__ARM_CENTER_OF_WORKSPACE_Z,
+            'chest': None,
         }
 
         # # Public variables:
@@ -254,14 +255,14 @@ class ProximityControl:
         """
 
         if (
-            self.__z_height['gcs'] <= self.__Z_ACTIVATION_BOUNDARIES['min']
-            or self.__z_height['gcs'] >= self.__Z_ACTIVATION_BOUNDARIES['max']
+            self.__z_height['gcs'] <= self.__ACTIVATION_BOUNDARY_Z['min']
+            or self.__z_height['gcs'] >= self.__ACTIVATION_BOUNDARY_Z['max']
         ):
 
             # Distance from the arms' center of workspace to the current position in
             # Z in GCS.
             z_difference_gcs = (
-                self.__z_height['gcs'] - self.__Z_ARM_CENTER_OF_WORKSPACE
+                self.__z_height['gcs'] - self.__ARM_CENTER_OF_WORKSPACE_Z
             )
 
             # Change in Z for chest:
@@ -337,10 +338,20 @@ def main():
         param_name=f'{rospy.get_name()}/robot_name',
         default='my_gen3',
     )
+    arm_center_of_workspace_z = rospy.get_param(
+        param_name=f'{rospy.get_name()}/arm_center_of_workspace_z',
+        default=0.0,
+    )
+    activation_boundary_z = rospy.get_param(
+        param_name=f'{rospy.get_name()}/activation_boundary_z',
+        default=0.3,
+    )
 
     class_instance = ProximityControl(
         node_name=node_name,
         robot_name=robot_name,
+        arm_center_of_workspace_z=arm_center_of_workspace_z,
+        activation_boundary_z=activation_boundary_z,
     )
 
     rospy.on_shutdown(class_instance.node_shutdown)
