@@ -73,6 +73,8 @@ class ChestControl:
         self.__chest_at_start_position = False
         self.__start_position_state = 0
 
+        self.__enable_chest_motion = True
+
         # # Public variables:
 
         # # Initialization and dependency status topics:
@@ -152,6 +154,11 @@ class ChestControl:
             f'{self.__NODE_NAME}/enable_logger',
             SetBool,
             self.__enable_logger_handler,
+        )
+        rospy.Service(
+            f'{self.__NODE_NAME}/enable_chest_motion',
+            SetBool,
+            self.__enable_chest_motion_handler,
         )
 
         # # Service subscriber:
@@ -243,7 +250,7 @@ class ChestControl:
 
         """
 
-        if not self.__is_initialized:
+        if not self.__is_initialized or not self.__enable_chest_motion:
             return
 
         serial_command = f'am_{request.position * 1000}_{request.speed_fraction}_'
@@ -263,7 +270,7 @@ class ChestControl:
 
         """
 
-        if not self.__is_initialized:
+        if not self.__is_initialized or not self.__enable_chest_motion:
             return
 
         serial_command = f'rm_{request.position * 1000}_{request.speed_fraction}_'
@@ -375,6 +382,29 @@ class ChestControl:
 
         return success, message
 
+    def __enable_chest_motion_handler(self, request):
+        """
+        
+        """
+
+        self.__enable_chest_motion = request.data
+
+        # Stop any chest motion.
+        self.__serial_write('vm_0.0_')
+
+        rospy.logwarn(
+            (
+                f'/chest_control: '
+                f'enable_chest_motion is set to {request.data}.'
+            ),
+        )
+
+        # Service response.
+        success = True
+        message = ''
+
+        return success, message
+
     # # Topic callbacks:
     def __velocity_callback(self, message):
         """Callback function for the 'z_chest_vel' topic.
@@ -384,7 +414,7 @@ class ChestControl:
 
         """
 
-        if not self.__is_initialized:
+        if not self.__is_initialized or not self.__enable_chest_motion:
             return
 
         serial_command = ''
@@ -414,7 +444,7 @@ class ChestControl:
 
         """
 
-        if not self.__is_initialized:
+        if not self.__is_initialized or not self.__enable_chest_motion:
             return
 
         serial_command = ''

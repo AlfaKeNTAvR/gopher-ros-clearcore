@@ -136,10 +136,6 @@ class ChestPID:
         )
 
         # # Timers:
-        # rospy.Timer(
-        #     rospy.Duration(1.0 / 100),
-        #     self.__some_function_timer,
-        # )
 
     # # Dependency status callbacks:
     # NOTE: each dependency topic should have a callback function, which will
@@ -158,6 +154,13 @@ class ChestPID:
         """
 
         self.__pid_enabled = request.data
+
+        self.__chest_stop()
+
+        rospy.logwarn(
+            (f'/chest_pid: '
+             f'enable_pid is set to {request.data}.'),
+        )
 
         success = True
         message = ''
@@ -190,12 +193,6 @@ class ChestPID:
         self.__control_effort = message.data
 
     # # Timer callbacks:
-    # def __some_function_timer(self, event):
-    #     """Calls <some_function> on each timer callback with 100 Hz frequency.
-
-    #     """
-
-    #     self.__some_function()
 
     # # Private methods:
     # NOTE: By default all new class methods should be private.
