@@ -5,6 +5,8 @@ Author(s):
     1. Nikita Boguslavskii (bognik3@gmail.com), Human-Inspired Robotics (HiRo)
        lab, Worcester Polytechnic Institute (WPI), 2024.
 
+TODO:
+
 """
 
 # # Standart libraries:
@@ -17,16 +19,14 @@ import numpy as np
 from std_msgs.msg import (
     Bool,
     Float32,
-    Float32MultiArray,
 )
+from geometry_msgs.msg import (Pose)
 from std_srvs.srv import (Empty)
 
 # # Third party messages and services:
-from oculus_ros.msg import (ControllerJoystick)
-from gopher_ros_clearcore.srv import (MovePosition)
 
 
-class PresetHeightsControl:
+class CoupledMotionMode:
     """
     
     """
@@ -34,9 +34,7 @@ class PresetHeightsControl:
     def __init__(
         self,
         node_name,
-        controller_side,
-        max_speed_fraction,
-        preset_heights_number,
+        robot_name,
     ):
         """
         
@@ -45,25 +43,19 @@ class PresetHeightsControl:
         # # Private CONSTANTS:
         # NOTE: By default all new class CONSTANTS should be private.
         self.__NODE_NAME = node_name
-        self.__CONTROLLER_SIDE = controller_side
-        self.__MAX_SPEED_FRACTION = max_speed_fraction
-
-        if preset_heights_number < 3:
-            raise ValueError('preset_heights_number should be >= 3.')
-
-        interval_length = 0.44 / (preset_heights_number - 1)
-        self.__PRESET_HEIGHTS = [
-            interval_length * i for i in range(preset_heights_number)
-        ]
+        self.__ROBOT_NAME = robot_name
 
         # # Public CONSTANTS:
 
         # # Private variables:
         # NOTE: By default all new class variables should be private.
-        self.__oculus_joystick = ControllerJoystick()
-        self.__joystick_state = 0
-        self.__preset_height_idx = None
-        self.__current_chest_position = None
+        self.__z_height = {
+            'gcs': {
+                'current': 0.33,
+                'previous': None,
+            },
+            'chest': 0.22,
+        }
 
         # # Public variables:
 
@@ -78,60 +70,48 @@ class PresetHeightsControl:
         )
 
         # NOTE: Specify dependency initial False initial status.
-        self.__dependency_status = {
-            'chest_control': False,
-        }
+        self.__dependency_status = {}
 
         # NOTE: Specify dependency is_initialized topic (or any other topic,
         # which will be available when the dependency node is running properly).
         self.__dependency_status_topics = {}
 
-        self.__dependency_status_topics['chest_control'] = (
+        self.__dependency_status['chest_pid'] = False
+        self.__dependency_status_topics['chest_pid'] = (
             rospy.Subscriber(
-                f'/chest_control/is_initialized',
+                '/chest_pid/is_initialized',
                 Bool,
-                self.__chest_control_callback,
+                self.__chest_pid_callback,
             )
         )
 
-        self.__dependency_status['controller_feedback'] = False
-        self.__dependency_status_topics['controller_feedback'] = (
+        self.__dependency_status['positional_control'] = False
+        self.__dependency_status_topics['positional_control'] = (
             rospy.Subscriber(
-                f'/{self.__CONTROLLER_SIDE}/controller_feedback/is_initialized',
+                f'/{self.__ROBOT_NAME}/positional_control/is_initialized',
                 Bool,
-                self.__controller_feedback_callback,
+                self.__positional_control_callback,
             )
         )
-
-        # # Service provider:
 
         # # Service subscriber:
         self.__chest_stop = rospy.ServiceProxy(
             '/chest_control/stop',
             Empty,
         )
-        self.__chest_absolute_position = rospy.ServiceProxy(
-            '/chest_control/move_absolute_position',
-            MovePosition,
-        )
 
         # # Topic publisher:
-        self.__current_preset = rospy.Publisher(
-            f'{self.__NODE_NAME}/current_preset',
-            Float32MultiArray,
+        self.__chest_pid_goal_position = rospy.Publisher(
+            '/chest_pid/goal_position',
+            Float32,
             queue_size=1,
         )
 
         # # Topic subscriber:
         rospy.Subscriber(
-            f'/{self.__CONTROLLER_SIDE}/controller_feedback/joystick',
-            ControllerJoystick,
-            self.__oculus_joystick_callback,
-        )
-        rospy.Subscriber(
-            '/chest_logger/current_position',
-            Float32,
-            self.__chest_current_position_callback,
+            f'/{self.__ROBOT_NAME}/relaxed_ik/commanded_pose_gcs',
+            Pose,
+            self.__commanded_pose_callback,
         )
 
         # # Timers:
@@ -139,36 +119,32 @@ class PresetHeightsControl:
     # # Dependency status callbacks:
     # NOTE: each dependency topic should have a callback function, which will
     # set __dependency_status variable.
-    def __chest_control_callback(self, message):
-        """Monitors /chest_control/is_initialized topic.
+    def __chest_pid_callback(self, message):
+        """Monitors /chest_pid/is_initialized topic.
         
         """
 
-        self.__dependency_status['chest_control'] = message.data
+        self.__dependency_status['chest_pid'] = message.data
 
-    def __controller_feedback_callback(self, message):
-        """Monitors /controller_feedback/is_initialized topic.
+    def __positional_control_callback(self, message):
+        """Monitors /{self.__ROBOT_NAME}/positional_control/is_initialized topic.
         
         """
 
-        self.__dependency_status['controller_feedback'] = message.data
+        self.__dependency_status['positional_control'] = message.data
 
     # # Service handlers:
 
     # # Topic callbacks:
-    def __oculus_joystick_callback(self, message):
-        """
-
-        """
-
-        self.__oculus_joystick = message
-
-    def __chest_current_position_callback(self, message):
+    def __commanded_pose_callback(self, message):
         """
         
         """
 
-        self.__current_chest_position = message.data
+        self.__z_height['gcs']['current'] = message.position.z
+
+        if self.__z_height['gcs']['previous'] == None:
+            self.__z_height['gcs']['previous'] = message.position.z
 
     # # Timer callbacks:
 
@@ -225,10 +201,7 @@ class PresetHeightsControl:
             )
 
         # NOTE (optionally): Add more initialization criterea if needed.
-        if (
-            self.__dependency_initialized
-            and self.__current_chest_position != None
-        ):
+        if (self.__dependency_initialized):
             if not self.__is_initialized:
                 rospy.loginfo(f'\033[92m{self.__NODE_NAME}: ready.\033[0m',)
 
@@ -245,71 +218,26 @@ class PresetHeightsControl:
 
         self.__node_is_initialized.publish(self.__is_initialized)
 
-    def __select_initial_preset_height(self):
+    def __publish_chest_position(self):
         """
         
         """
 
-        closest_preset = min(
-            self.__PRESET_HEIGHTS,
-            key=lambda x: abs(x - self.__current_chest_position),
-        )
-        self.__preset_height_idx = (self.__PRESET_HEIGHTS.index(closest_preset))
-
-    def __move_preset_height(self, direction):
-        """
-        
-        """
-
-        self.__preset_height_idx += direction
-        self.__preset_height_idx = np.clip(
-            self.__preset_height_idx,
-            0,
-            len(self.__PRESET_HEIGHTS) - 1,
+        # Change in Z in GCS:
+        z_difference_gcs = (
+            self.__z_height['gcs']['current']
+            - self.__z_height['gcs']['previous']
         )
 
-        # Chest_control service call.
-        self.__chest_absolute_position(
-            self.__PRESET_HEIGHTS[self.__preset_height_idx],
-            self.__MAX_SPEED_FRACTION,
+        # Change in Z for chest:
+        self.__z_height['chest'] += z_difference_gcs
+        self.__z_height['gcs']['previous'] = self.__z_height['gcs']['current']
+
+        goal_position_message = Float32()
+        goal_position_message.data = float(
+            np.clip(self.__z_height['chest'], 0.0, 0.44)
         )
-
-    def __joystick_state_machine(self):
-        """
-        
-        """
-
-        # State 0: Joystick was moved.
-        if (
-            abs(self.__oculus_joystick.position_y) >= 0.05
-            and self.__joystick_state == 0
-        ):
-            if self.__oculus_joystick.position_y > 0:
-                direction = 1
-            else:
-                direction = -1
-
-            self.__move_preset_height(direction)
-            self.__joystick_state = 1
-
-        # State 0: Joystick was released.
-        elif (
-            abs(self.__oculus_joystick.position_y) < 0.05
-            and self.__joystick_state == 1
-        ):
-            self.__joystick_state = 0
-
-    def __publish_current_preset_height(self):
-        """
-        
-        """
-
-        preset_height_message = Float32MultiArray()
-        preset_height_message.data = [
-            self.__PRESET_HEIGHTS[self.__preset_height_idx],
-            self.__preset_height_idx,
-        ]
-        self.__current_preset.publish(preset_height_message)
+        self.__chest_pid_goal_position.publish(goal_position_message)
 
     # # Public methods:
     # NOTE: By default all new class methods should be private.
@@ -323,13 +251,10 @@ class PresetHeightsControl:
         if not self.__is_initialized:
             return
 
-        if self.__preset_height_idx == None:
-            self.__select_initial_preset_height()
-
         # NOTE: Add code (function calls), which has to be executed once the
         # node was successfully initialized.
-        self.__joystick_state_machine()
-        self.__publish_current_preset_height()
+
+        self.__publish_chest_position()
 
     def node_shutdown(self):
         """
@@ -344,7 +269,6 @@ class PresetHeightsControl:
 
         # NOTE: Placing a service call inside of a try-except block here causes
         # the node to stuck.
-
         self.__chest_stop()
 
         rospy.loginfo_once(f'{self.__NODE_NAME}: node has shut down.',)
@@ -358,7 +282,7 @@ def main():
     # # Default node initialization.
     # This name is replaced when a launch file is used.
     rospy.init_node(
-        'preset_heights_control',
+        'coupled_motion_mode',
         log_level=rospy.INFO,  # rospy.DEBUG to view debug messages.
     )
 
@@ -372,24 +296,14 @@ def main():
         default=100,
     )
 
-    controller_side = rospy.get_param(
-        param_name=f'{node_name}/controller_side',
-        default='right',
-    )
-    max_speed_fraction = rospy.get_param(
-        param_name=f'{node_name}/max_speed_fraction',
-        default=1.0,
-    )
-    preset_heights_number = rospy.get_param(
-        param_name=f'{node_name}/preset_heights_number',
-        default=3,
+    robot_name = rospy.get_param(
+        param_name=f'{rospy.get_name()}/robot_name',
+        default='my_gen3',
     )
 
-    class_instance = PresetHeightsControl(
+    class_instance = CoupledMotionMode(
         node_name=node_name,
-        controller_side=controller_side,
-        max_speed_fraction=max_speed_fraction,
-        preset_heights_number=preset_heights_number,
+        robot_name=robot_name,
     )
 
     rospy.on_shutdown(class_instance.node_shutdown)

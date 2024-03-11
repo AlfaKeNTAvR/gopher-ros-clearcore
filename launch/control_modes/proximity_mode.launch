@@ -7,13 +7,28 @@
     <arg 
     name="node_frequency" 
     default="100"/>
-    
+
     <!-- Start position (chest): move chest to starting position
     [meters]: [0.0 - 0.44]. If set to -1, no starting position is set and the
     chest stays at current position. -->
     <arg 
     name="start_position" 
     value="0.22"/>
+
+    <!-- Arm center of workspace Z: the center of arm's workspace in GCS Z
+    coordinate. This value is used for Proximity activation boundaries
+    calculation. -->
+    <arg 
+    name="arm_center_of_workspace_z" 
+    value="0.2"/>
+
+    <!-- Activation boundary Z: Proximity activation boundaries (in GCS) are
+    calculate in the following way: 
+        'min': arm_center_of_workspace_z - activation_boundary_z
+        'max': arm_center_of_workspace_z + activation_boundary_z -->
+    <arg 
+    name="activation_boundary_z" 
+    value="0.3"/>
 
 
     <!-- If any of dependency or optional subfiles should not be launched (or
@@ -43,14 +58,20 @@
         file="$(find gopher_ros_clearcore)/launch/chest_pid.launch"/>
     </group>
 
-    <!-- Coupled motion control module: -->
+    <!-- Proximity module: -->
     <node 
     pkg="gopher_ros_clearcore" 
-    type="coupled_motion_control.py" 
-    name="coupled_motion_control" 
+    type="proximity_mode.py" 
+    name="proximity_mode" 
     output="screen">
         <param 
         name="node_frequency" 
         value="$(arg node_frequency)"/>
+        <param 
+        name="arm_center_of_workspace_z" 
+        value="$(arg arm_center_of_workspace_z)"/>
+        <param 
+        name="activation_boundary_z" 
+        value="$(arg activation_boundary_z)"/>
     </node>
 </launch>

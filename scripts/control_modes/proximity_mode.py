@@ -2,8 +2,6 @@
 """
 
 Author(s):
-    1. Nikita Boguslavskii (bognik3@gmail.com), Human-Inspired Robotics (HiRo)
-       lab, Worcester Polytechnic Institute (WPI), 2024.
 
 TODO:
 
@@ -26,7 +24,7 @@ from std_srvs.srv import (Empty)
 # # Third party messages and services:
 
 
-class CoupledMotionControl:
+class ProximityMode:
     """
     
     """
@@ -35,6 +33,8 @@ class CoupledMotionControl:
         self,
         node_name,
         robot_name,
+        arm_center_of_workspace_z,
+        activation_boundary_z,
     ):
         """
         
@@ -45,16 +45,19 @@ class CoupledMotionControl:
         self.__NODE_NAME = node_name
         self.__ROBOT_NAME = robot_name
 
+        self.__ARM_CENTER_OF_WORKSPACE_Z = arm_center_of_workspace_z
+        self.__ACTIVATION_BOUNDARY_Z = {
+            'min': self.__ARM_CENTER_OF_WORKSPACE_Z - activation_boundary_z,
+            'max': self.__ARM_CENTER_OF_WORKSPACE_Z + activation_boundary_z,
+        }
+
         # # Public CONSTANTS:
 
         # # Private variables:
         # NOTE: By default all new class variables should be private.
         self.__z_height = {
-            'gcs': {
-                'current': 0.33,
-                'previous': None,
-            },
-            'chest': 0.22,
+            'gcs': self.__ARM_CENTER_OF_WORKSPACE_Z,
+            'chest': None,
         }
 
         # # Public variables:
@@ -94,6 +97,8 @@ class CoupledMotionControl:
             )
         )
 
+        # # Service provider:
+
         # # Service subscriber:
         self.__chest_stop = rospy.ServiceProxy(
             '/chest_control/stop',
@@ -112,6 +117,11 @@ class CoupledMotionControl:
             f'/{self.__ROBOT_NAME}/relaxed_ik/commanded_pose_gcs',
             Pose,
             self.__commanded_pose_callback,
+        )
+        rospy.Subscriber(
+            '/chest_logger/current_position',
+            Float32,
+            self.__chest_current_position_callback,
         )
 
         # # Timers:
@@ -141,10 +151,14 @@ class CoupledMotionControl:
         
         """
 
-        self.__z_height['gcs']['current'] = message.position.z
+        self.__z_height['gcs'] = message.position.z
 
-        if self.__z_height['gcs']['previous'] == None:
-            self.__z_height['gcs']['previous'] = message.position.z
+    def __chest_current_position_callback(self, message):
+        """
+        
+        """
+
+        self.__z_height['chest'] = message.data
 
     # # Timer callbacks:
 
@@ -204,7 +218,6 @@ class CoupledMotionControl:
         if (self.__dependency_initialized):
             if not self.__is_initialized:
                 rospy.loginfo(f'\033[92m{self.__NODE_NAME}: ready.\033[0m',)
-
                 self.__is_initialized = True
 
         else:
@@ -223,21 +236,28 @@ class CoupledMotionControl:
         
         """
 
-        # Change in Z in GCS:
-        z_difference_gcs = (
-            self.__z_height['gcs']['current']
-            - self.__z_height['gcs']['previous']
-        )
+        if (
+            self.__z_height['gcs'] <= self.__ACTIVATION_BOUNDARY_Z['min']
+            or self.__z_height['gcs'] >= self.__ACTIVATION_BOUNDARY_Z['max']
+        ):
 
-        # Change in Z for chest:
-        self.__z_height['chest'] += z_difference_gcs
-        self.__z_height['gcs']['previous'] = self.__z_height['gcs']['current']
+            # Distance from the arms' center of workspace to the current position in
+            # Z in GCS.
+            z_difference_gcs = (
+                self.__z_height['gcs'] - self.__ARM_CENTER_OF_WORKSPACE_Z
+            )
 
-        goal_position_message = Float32()
-        goal_position_message.data = float(
-            np.clip(self.__z_height['chest'], 0.0, 0.44)
-        )
-        self.__chest_pid_goal_position.publish(goal_position_message)
+            # Change in Z for chest:
+            self.__z_height['chest'] += z_difference_gcs
+            self.__z_height['chest'] = np.clip(
+                self.__z_height['chest'],
+                0.0,
+                0.44,
+            )
+
+            goal_position_message = Float32()
+            goal_position_message.data = float(self.__z_height['chest'])
+            self.__chest_pid_goal_position.publish(goal_position_message)
 
     # # Public methods:
     # NOTE: By default all new class methods should be private.
@@ -282,7 +302,7 @@ def main():
     # # Default node initialization.
     # This name is replaced when a launch file is used.
     rospy.init_node(
-        'coupled_motion_control',
+        'proximity_control',
         log_level=rospy.INFO,  # rospy.DEBUG to view debug messages.
     )
 
@@ -300,10 +320,20 @@ def main():
         param_name=f'{rospy.get_name()}/robot_name',
         default='my_gen3',
     )
+    arm_center_of_workspace_z = rospy.get_param(
+        param_name=f'{rospy.get_name()}/arm_center_of_workspace_z',
+        default=0.0,
+    )
+    activation_boundary_z = rospy.get_param(
+        param_name=f'{rospy.get_name()}/activation_boundary_z',
+        default=0.3,
+    )
 
-    class_instance = CoupledMotionControl(
+    class_instance = ProximityMode(
         node_name=node_name,
         robot_name=robot_name,
+        arm_center_of_workspace_z=arm_center_of_workspace_z,
+        activation_boundary_z=activation_boundary_z,
     )
 
     rospy.on_shutdown(class_instance.node_shutdown)

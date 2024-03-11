@@ -64,11 +64,11 @@
         </include>
     </group>
 
-    <!-- Preset heights control module: -->s
+    <!-- Preset heights module: -->s
     <node 
     pkg="gopher_ros_clearcore" 
-    type="preset_heights_control.py" 
-    name="preset_heights_control" 
+    type="preset_heights_mode.py" 
+    name="preset_heights_mode" 
     output="screen">
         <param 
         name="node_frequency" 
