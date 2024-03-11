@@ -19,10 +19,7 @@ from std_msgs.msg import (
     Float32,
 )
 from geometry_msgs.msg import (Pose)
-from std_srvs.srv import (
-    Empty,
-    SetBool,
-)
+from std_srvs.srv import (Empty)
 
 # # Third party messages and services:
 
@@ -55,7 +52,6 @@ class ProximityControl:
         }
 
         # # Public CONSTANTS:
-        self.PUBLIC_CONTANT = 1
 
         # # Private variables:
         # NOTE: By default all new class variables should be private.
@@ -65,7 +61,6 @@ class ProximityControl:
         }
 
         # # Public variables:
-        self.public_variable = 1
 
         # # Initialization and dependency status topics:
         self.__is_initialized = False
@@ -93,12 +88,12 @@ class ProximityControl:
             )
         )
 
-        self.__dependency_status['teleoperation'] = False
-        self.__dependency_status_topics['teleoperation'] = (
+        self.__dependency_status['positional_control'] = False
+        self.__dependency_status_topics['positional_control'] = (
             rospy.Subscriber(
-                '/my_gen3/teleoperation/is_initialized',
+                f'/{self.__ROBOT_NAME}/positional_control/is_initialized',
                 Bool,
-                self.__teleoperation_callback,
+                self.__positional_control_callback,
             )
         )
 
@@ -108,15 +103,6 @@ class ProximityControl:
         self.__chest_stop = rospy.ServiceProxy(
             '/chest_control/stop',
             Empty,
-        )
-
-        self.__positional_control_chest_compensation = rospy.ServiceProxy(
-            '/my_gen3/positional_control/enable_z_chest_compensation',
-            SetBool,
-        )
-        self.__teleoperation_chest_compensation = rospy.ServiceProxy(
-            f'/my_gen3/teleoperation/enable_z_chest_compensation',
-            SetBool,
         )
 
         # # Topic publisher:
@@ -150,12 +136,12 @@ class ProximityControl:
 
         self.__dependency_status['chest_pid'] = message.data
 
-    def __teleoperation_callback(self, message):
-        """Monitors /my_gen3/teleoperation/is_initialized topic.
+    def __positional_control_callback(self, message):
+        """Monitors /{self.__ROBOT_NAME}/positional_control/is_initialized topic.
         
         """
 
-        self.__dependency_status['teleoperation'] = message.data
+        self.__dependency_status['positional_control'] = message.data
 
     # # Service handlers:
 
@@ -232,10 +218,6 @@ class ProximityControl:
         if (self.__dependency_initialized):
             if not self.__is_initialized:
                 rospy.loginfo(f'\033[92m{self.__NODE_NAME}: ready.\033[0m',)
-
-                self.__teleoperation_chest_compensation(True)
-                self.__positional_control_chest_compensation(True)
-
                 self.__is_initialized = True
 
         else:

@@ -18,10 +18,7 @@ from std_msgs.msg import (
     Bool,
     Float32,
 )
-from std_srvs.srv import (
-    Empty,
-    SetBool,
-)
+from std_srvs.srv import (Empty)
 
 # # Third party messages and services:
 from oculus_ros.msg import (ControllerJoystick)
@@ -37,7 +34,6 @@ class OculusChestMapping:
         node_name,
         controller_side,
         max_speed_fraction,
-        chest_compensation_for_kinova,
     ):
         """
         
@@ -48,7 +44,6 @@ class OculusChestMapping:
         self.__NODE_NAME = node_name
         self.__CONTROLLER_SIDE = controller_side
         self.__MAX_SPEED_FRACTION = max_speed_fraction
-        self.__CHEST_COMPENSATION_FOR_KINOVA = chest_compensation_for_kinova
 
         # # Public CONSTANTS:
 
@@ -86,12 +81,12 @@ class OculusChestMapping:
             )
         )
 
-        self.__dependency_status['teleoperation'] = False
-        self.__dependency_status_topics['teleoperation'] = (
+        self.__dependency_status['controller_feedback'] = False
+        self.__dependency_status_topics['controller_feedback'] = (
             rospy.Subscriber(
-                '/my_gen3/teleoperation/is_initialized',
+                f'/{self.__CONTROLLER_SIDE}/controller_feedback/is_initialized',
                 Bool,
-                self.__teleoperation_callback,
+                self.__controller_feedback_callback,
             )
         )
 
@@ -105,15 +100,6 @@ class OculusChestMapping:
         self.__chest_stop = rospy.ServiceProxy(
             '/chest_control/stop',
             Empty,
-        )
-
-        self.__positional_control_chest_compensation = rospy.ServiceProxy(
-            '/my_gen3/positional_control/enable_z_chest_compensation',
-            SetBool,
-        )
-        self.__teleoperation_chest_compensation = rospy.ServiceProxy(
-            f'/my_gen3/teleoperation/enable_z_chest_compensation',
-            SetBool,
         )
 
         # # Topic publisher:
@@ -131,10 +117,6 @@ class OculusChestMapping:
         )
 
         # # Timers:
-        # rospy.Timer(
-        #     rospy.Duration(1.0 / 100),
-        #     self.__some_function_timer,
-        # )
 
     # # Dependency status callbacks:
     # NOTE: each dependency topic should have a callback function, which will
@@ -146,22 +128,14 @@ class OculusChestMapping:
 
         self.__dependency_status['chest_control'] = message.data
 
-    def __teleoperation_callback(self, message):
-        """Monitors /my_gen3/teleoperation/is_initialized topic.
+    def __controller_feedback_callback(self, message):
+        """Monitors /controller_feedback/is_initialized topic.
         
         """
 
-        self.__dependency_status['teleoperation'] = message.data
+        self.__dependency_status['controller_feedback'] = message.data
 
     # # Service handlers:
-    # def __service_name1_handler(self, request):
-    #     """
-
-    #     """
-
-    #     response = True
-
-    #     return response
 
     # # Topic callbacks:
     def __oculus_joystick_callback(self, message):
@@ -172,12 +146,6 @@ class OculusChestMapping:
         self.__oculus_joystick = message
 
     # # Timer callbacks:
-    # def __some_function_timer(self, event):
-    #     """Calls <some_function> on each timer callback with 100 Hz frequency.
-
-    #     """
-
-    #     self.__some_function()
 
     # # Private methods:
     # NOTE: By default all new class methods should be private.
@@ -200,12 +168,6 @@ class OculusChestMapping:
         self.__dependency_initialized = True
 
         for key in self.__dependency_status:
-            if (
-                key == 'teleoperation'
-                and not self.__CHEST_COMPENSATION_FOR_KINOVA
-            ):
-                continue
-
             if self.__dependency_status_topics[key].get_num_connections() != 1:
                 if self.__dependency_status[key]:
                     rospy.logerr(
@@ -241,10 +203,6 @@ class OculusChestMapping:
         if (self.__dependency_initialized):
             if not self.__is_initialized:
                 rospy.loginfo(f'\033[92m{self.__NODE_NAME}: ready.\033[0m',)
-
-                if self.__CHEST_COMPENSATION_FOR_KINOVA:
-                    self.__teleoperation_chest_compensation(True)
-                    self.__positional_control_chest_compensation(True)
 
                 self.__is_initialized = True
 
@@ -367,16 +325,11 @@ def main():
         param_name=f'{rospy.get_name()}/max_speed_fraction',
         default=1.0,
     )
-    chest_compensation_for_kinova = rospy.get_param(
-        param_name=f'{node_name}/enable_chest_compensation_for_kinova',
-        default=False,
-    )
 
     class_instance = OculusChestMapping(
         node_name=node_name,
         controller_side=controller_side,
         max_speed_fraction=max_speed_fraction,
-        chest_compensation_for_kinova=chest_compensation_for_kinova,
     )
 
     rospy.on_shutdown(class_instance.node_shutdown)

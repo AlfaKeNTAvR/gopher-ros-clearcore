@@ -19,10 +19,7 @@ from std_msgs.msg import (
     Float32,
     Float32MultiArray,
 )
-from std_srvs.srv import (
-    Empty,
-    SetBool,
-)
+from std_srvs.srv import (Empty)
 
 # # Third party messages and services:
 from oculus_ros.msg import (ControllerJoystick)
@@ -40,7 +37,6 @@ class PresetHeightsControl:
         controller_side,
         max_speed_fraction,
         preset_heights_number,
-        chest_compensation_for_kinova,
     ):
         """
         
@@ -59,7 +55,6 @@ class PresetHeightsControl:
         self.__PRESET_HEIGHTS = [
             interval_length * i for i in range(preset_heights_number)
         ]
-        self.__CHEST_COMPENSATION_FOR_KINOVA = chest_compensation_for_kinova
 
         # # Public CONSTANTS:
 
@@ -99,12 +94,12 @@ class PresetHeightsControl:
             )
         )
 
-        self.__dependency_status['teleoperation'] = False
-        self.__dependency_status_topics['teleoperation'] = (
+        self.__dependency_status['controller_feedback'] = False
+        self.__dependency_status_topics['controller_feedback'] = (
             rospy.Subscriber(
-                '/my_gen3/teleoperation/is_initialized',
+                f'/{self.__CONTROLLER_SIDE}/controller_feedback/is_initialized',
                 Bool,
-                self.__teleoperation_callback,
+                self.__controller_feedback_callback,
             )
         )
 
@@ -118,15 +113,6 @@ class PresetHeightsControl:
         self.__chest_absolute_position = rospy.ServiceProxy(
             '/chest_control/move_absolute_position',
             MovePosition,
-        )
-
-        self.__positional_control_chest_compensation = rospy.ServiceProxy(
-            '/my_gen3/positional_control/enable_z_chest_compensation',
-            SetBool,
-        )
-        self.__teleoperation_chest_compensation = rospy.ServiceProxy(
-            f'/my_gen3/teleoperation/enable_z_chest_compensation',
-            SetBool,
         )
 
         # # Topic publisher:
@@ -160,12 +146,12 @@ class PresetHeightsControl:
 
         self.__dependency_status['chest_control'] = message.data
 
-    def __teleoperation_callback(self, message):
-        """Monitors /my_gen3/teleoperation/is_initialized topic.
+    def __controller_feedback_callback(self, message):
+        """Monitors /controller_feedback/is_initialized topic.
         
         """
 
-        self.__dependency_status['teleoperation'] = message.data
+        self.__dependency_status['controller_feedback'] = message.data
 
     # # Service handlers:
 
@@ -207,12 +193,6 @@ class PresetHeightsControl:
         self.__dependency_initialized = True
 
         for key in self.__dependency_status:
-            if (
-                key == 'teleoperation'
-                and not self.__CHEST_COMPENSATION_FOR_KINOVA
-            ):
-                continue
-
             if self.__dependency_status_topics[key].get_num_connections() != 1:
                 if self.__dependency_status[key]:
                     rospy.logerr(
@@ -251,10 +231,6 @@ class PresetHeightsControl:
         ):
             if not self.__is_initialized:
                 rospy.loginfo(f'\033[92m{self.__NODE_NAME}: ready.\033[0m',)
-
-                if self.__CHEST_COMPENSATION_FOR_KINOVA:
-                    self.__teleoperation_chest_compensation(True)
-                    self.__positional_control_chest_compensation(True)
 
                 self.__is_initialized = True
 
@@ -408,17 +384,12 @@ def main():
         param_name=f'{node_name}/preset_heights_number',
         default=3,
     )
-    chest_compensation_for_kinova = rospy.get_param(
-        param_name=f'{node_name}/enable_chest_compensation_for_kinova',
-        default=False,
-    )
 
     class_instance = PresetHeightsControl(
         node_name=node_name,
         controller_side=controller_side,
         max_speed_fraction=max_speed_fraction,
         preset_heights_number=preset_heights_number,
-        chest_compensation_for_kinova=chest_compensation_for_kinova,
     )
 
     rospy.on_shutdown(class_instance.node_shutdown)

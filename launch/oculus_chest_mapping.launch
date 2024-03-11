@@ -27,12 +27,6 @@
     name="start_position" 
     value="0.22"/>
 
-    <!-- Enable chest compensation for Kinova: Kinova EE stabilization based on
-    the chest position. -->
-    <arg 
-    name="enable_chest_compensation_for_kinova" 
-    default="false"/> 
-
 
     <!-- If any of dependency or optional subfiles should not be launched (or
     are launched separately) set corresponding argument to "false". -->
@@ -80,8 +74,5 @@
         <param 
         name="max_speed_fraction" 
         value="$(arg max_speed_fraction)"/>
-        <param 
-        name="enable_chest_compensation_for_kinova" 
-        value="$(arg enable_chest_compensation_for_kinova)"/>
     </node>
 </launch>
