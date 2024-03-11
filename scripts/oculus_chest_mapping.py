@@ -50,7 +50,6 @@ class OculusChestMapping:
         # # Private variables:
         # NOTE: By default all new class variables should be private.
         self.__oculus_joystick = ControllerJoystick()
-        self.__joystick_button_state = 0
 
         # # Public variables:
 
@@ -241,25 +240,6 @@ class OculusChestMapping:
         velocity_message.data = chest_velocity
         self.__chest_velocity.publish(velocity_message)
 
-    def __joystick_button_state_machine(self):
-        """
-        
-        """
-
-        # State 0: Joystick button was pressed. Homing is activated.
-        if (
-            self.__oculus_joystick.button and self.__joystick_button_state == 0
-        ):
-            self.__chest_home()
-            self.__joystick_button_state = 1
-
-        # State 1: Joystick button was released.
-        elif (
-            not self.__oculus_joystick.button
-            and self.__joystick_button_state == 1
-        ):
-            self.__joystick_button_state = 0
-
     # # Public methods:
     # NOTE: By default all new class methods should be private.
     def main_loop(self):
@@ -274,7 +254,6 @@ class OculusChestMapping:
 
         # NOTE: Add code (function calls), which has to be executed once the
         # node was successfully initialized.
-        self.__joystick_button_state_machine()
         self.__map_chest()
 
     def node_shutdown(self):
