@@ -108,19 +108,24 @@ class ChestLogger:
         )
         self.__brake_status = rospy.Publisher(
             f'{self.__NODE_NAME}/brake_status',
-            String,
+            Bool,
             queue_size=1,
         )
         self.__drive_status = rospy.Publisher(
             f'{self.__NODE_NAME}/drive_status',
-            String,
+            Bool,
             queue_size=1,
         )
-        self.__limits_status = rospy.Publisher(
-            f'{self.__NODE_NAME}/limits_status',
-            String,
-            queue_size=1,
-        )
+        # self.__upper_limit_status = rospy.Publisher(
+        #     f'{self.__NODE_NAME}/upper_limit_status',
+        #     Bool,
+        #     queue_size=1,
+        # )
+        # self.__lower_limit_status = rospy.Publisher(
+        #     f'{self.__NODE_NAME}/lower_limit_status',
+        #     Bool,
+        #     queue_size=1,
+        # )
 
         # # Topic subscriber:
         rospy.Subscriber(
@@ -174,9 +179,14 @@ class ChestLogger:
                 self.__is_homed.publish(is_homed)
 
                 # Object for publishing status of components of chest.
-                self.__brake_status.publish(json.dumps(status['Brake']))
-                self.__drive_status.publish(json.dumps(status['Motor']))
-                self.__limits_status.publish(json.dumps(status['Limits']))
+                self.__brake_status.publish(Bool(status['Brake']['Active']))
+                self.__drive_status.publish(Bool(status['Motor']['Enabled']))
+                # self.__upper_limit_status.publish(
+                #     Bool(status['Limits']['UpperLimitReached'])
+                # )
+                # self.__lower_limit_status.publish(
+                #     Bool(status['Limits']['LowerLimitReached'])
+                # )
 
         except json.JSONDecodeError as e:
             # Handle JSON decoding error.
