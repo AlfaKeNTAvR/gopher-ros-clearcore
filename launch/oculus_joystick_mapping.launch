@@ -62,8 +62,8 @@
     <!-- Oculus mapping: -->
     <node 
     pkg="gopher_ros_clearcore" 
-    type="oculus_chest_mapping.py" 
-    name="oculus_chest_mapping" 
+    type="oculus_joystick_mapping.py" 
+    name="chest_oculus_joystick_mapping" 
     output="screen">
         <param 
         name="node_frequency" 

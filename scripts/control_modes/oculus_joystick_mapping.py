@@ -24,7 +24,7 @@ from std_srvs.srv import (Empty)
 from oculus_ros.msg import (ControllerJoystick)
 
 
-class OculusChestMapping:
+class OculusJoystickMapping:
     """
     
     """
@@ -305,7 +305,7 @@ def main():
         default=1.0,
     )
 
-    class_instance = OculusChestMapping(
+    class_instance = OculusJoystickMapping(
         node_name=node_name,
         controller_side=controller_side,
         max_speed_fraction=max_speed_fraction,
