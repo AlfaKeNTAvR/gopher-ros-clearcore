@@ -1,0 +1,80 @@
+<?xml version="1.0"?>
+<launch>=
+
+    <!-- ============================ SETTINGS ============================= -->
+
+    <!-- Node frequency: the frequency [Hz] which rate.sleep() function will
+    attempt to maintain in the main_loop. -->
+    <arg 
+    name="node_frequency" 
+    default="100"/>
+
+    <!-- Controller side: can be either "right" or "left". -->
+    <arg 
+    name="controller_side" 
+    default="right"/>
+
+    <!-- Start position (chest): move chest to starting position
+    [meters]: [0.0 - 0.44]. If set to -1, no starting position is set and the
+    chest stays at current position. -->
+    <arg 
+    name="start_position" 
+    value="0.22"/>
+
+
+    <!-- If any of dependency or optional subfiles should not be launched (or
+    are launched separately) set corresponding argument to "false". -->
+    <arg 
+    name="launch_chest" 
+    default="true"/>
+
+    <arg 
+    name="launch_chest_pid" 
+    default="true"/>
+
+    <arg 
+    name="launch_controller_feedback" 
+    default="true"/>
+
+    <!-- ======================== END OF SETTINGS ========================== -->
+
+    <!-- Chest modules (dependency): -->
+    <group if="$(arg launch_chest)">
+        <include 
+        file="$(find gopher_ros_clearcore)/launch/chest.launch">
+            <arg 
+            name="start_position" 
+            value="$(arg start_position)"/>
+        </include>
+    </group>
+
+    <!-- Chest PID control module (dependency): -->
+    <group if="$(arg launch_chest_pid)">
+        <include 
+        file="$(find gopher_ros_clearcore)/launch/chest_pid.launch"/>
+    </group>
+
+    <!-- Oculus controller feedback (dependency): -->
+    <group if="$(arg launch_controller_feedback)">
+        <include 
+        file="$(find oculus_ros)/launch/controller_feedback.launch">
+            <arg 
+            name="controller_side" 
+            value="$(arg controller_side)"/>
+        </include>
+    </group>
+
+    <!-- Oculus mapping: -->
+    <node 
+    pkg="gopher_ros_clearcore" 
+    type="oculus_pose_mapping.py" 
+    name="chest_oculus_pose_mapping" 
+    output="screen">
+        <param 
+        name="node_frequency" 
+        value="$(arg node_frequency)"/>
+        <param 
+        name="controller_side" 
+        value="$(arg controller_side)"/>
+    </node>
+</launch>
